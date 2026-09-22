@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        APP_NAME = 'devops-demo'
+        IMAGE = "localhost/devops-demo:${BUILD_NUMBER}"
+        CONTAINER = 'devops-demo'
+    }
+
     stages {
 
         stage('Checkout') {
@@ -21,23 +27,58 @@ pipeline {
             }
         }
 
-        stage('Build Container Image') {
+        stage('Build Image - Rootless') {
             steps {
-                sh 'podman build -t localhost/devops-demo:${BUILD_NUMBER} .'
+                sh '''
+                    podman build \
+                      -t ${IMAGE} \
+                      .
+                '''
             }
         }
 
-        stage('Deploy Container') {
+        stage('Test Image - Rootless') {
             steps {
                 sh '''
-                    podman stop devops-demo || true
-                    podman rm devops-demo || true
-
                     podman run -d \
-                        --name devops-demo \
-                        --network podman \
-                        -p 5000:5000 \
-                        localhost/devops-demo:${BUILD_NUMBER}
+                      --name ${CONTAINER}-test \
+                      -p 5002:5000 \
+                      ${IMAGE}
+                '''
+
+                sh '''
+                    sleep 5
+                    curl -f http://127.0.0.1:5002
+                '''
+
+                sh '''
+                    podman stop ${CONTAINER}-test || true
+                    podman rm ${CONTAINER}-test || true
+                '''
+            }
+        }
+
+        stage('Deploy - Rootful') {
+            steps {
+                sh '''
+                    sudo podman pull ${IMAGE} || true
+
+                    sudo podman stop ${CONTAINER} || true
+                    sudo podman rm ${CONTAINER} || true
+
+                    sudo podman run -d \
+                      --name ${CONTAINER} \
+                      -p 5000:5000 \
+                      ${IMAGE}
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                sh '''
+                    sleep 5
+                    curl -f http://127.0.0.1:5000
                 '''
             }
         }
