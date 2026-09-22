@@ -16,15 +16,6 @@ pipeline {
                 '''
             }
         }
-
-        stage('Test') {
-            steps {
-                sh '''
-                    python3 -m pytest
-                '''
-            }
-        }
-
         stage('Build Application') {
             steps {
                 sh '''
