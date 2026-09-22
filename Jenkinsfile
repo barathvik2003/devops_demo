@@ -35,6 +35,7 @@ pipeline {
 
                     podman run -d \
                         --name devops-demo \
+                        --network podman \
                         -p 5000:5000 \
                         localhost/devops-demo:${BUILD_NUMBER}
                 '''
